@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#102b32">
+<title>神樹鼓｜第一章・枯樹之下</title>
+<style>
+:root{--bg:#0b2026;--panel:#12343a;--mint:#6aa99a;--gold:#d9a441;--cream:#f2e6c9;--rust:#8c3b2a}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--cream);font-family:system-ui,"Noto Sans TC",sans-serif;touch-action:manipulation}
+#app{height:100dvh;display:flex;flex-direction:column;background:linear-gradient(#102f36,#08191e)}
+header{height:42px;flex:none;display:flex;justify-content:space-between;align-items:center;padding:0 12px;background:#0a2228;font-size:12px;gap:8px}
+header b{color:var(--gold);letter-spacing:2px;white-space:nowrap}
+#stats{white-space:nowrap;text-align:right;font-variant-numeric:tabular-nums}
+#stage{position:relative;flex:1;min-height:0}
+canvas{width:100%;height:100%;display:block}
+#hud{position:absolute;left:12px;right:12px;top:8px;pointer-events:none;display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.meter{width:min(34vw,210px);font-size:11px;color:#d7dfd0}
+.track{height:7px;background:#07191e;border:1px solid #54756d;border-radius:9px;overflow:hidden;margin-top:4px}
+.fill{height:100%;width:100%;background:var(--gold);transition:width .15s}
+#bossHud{display:none;text-align:right;width:min(42vw,250px)}
+#bossHud .fill{background:#b75a3e}
+#controls{flex:none;padding:7px 12px max(8px,env(safe-area-inset-bottom));background:#0a2026;border-top:1px solid #31534f}
+#instruction{height:22px;text-align:center;color:var(--gold);font-weight:800;font-size:14px;white-space:nowrap}
+#sequence{height:36px;display:flex;justify-content:center;align-items:center;gap:8px}
+.beat{width:27px;height:27px;border:1px solid #638b7c;border-radius:50%;display:grid;place-items:center;font-size:13px;color:#b8c8b8;background:#183b3d}
+.beat.now{background:var(--gold);color:#132a2a;box-shadow:0 0 14px #e9b94f;transform:scale(1.08)}
+.beat.done{background:#426e60;color:#fff}
+#pads{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:5px}
+.pad{height:clamp(58px,11vh,82px);min-height:56px;border:2px solid var(--mint);border-radius:15px;background:#1b5550;color:var(--cream);font-weight:900;font-size:clamp(18px,4vw,25px);display:flex;flex-direction:row;align-items:center;justify-content:center;gap:7px;touch-action:manipulation}
+.pad small{font-size:11px;display:block;font-weight:600;opacity:.85}
+#drum{background:#674323;border-color:var(--gold)}
+#whistle{background:#344c61;border-color:#87a9bd}
+#tools{display:flex;justify-content:center;gap:8px;margin-top:7px}
+.tool{border:1px solid #6aa99a;border-radius:12px;background:#173c40;color:#e8e4cf;font-size:12px;font-weight:700;padding:7px 13px;min-height:34px}
+#feedback{height:19px;text-align:center;font-size:12px;padding-top:3px;color:#a8c6b5}
+#overlay{position:absolute;inset:0;z-index:4;display:flex;align-items:center;justify-content:center;padding:14px;background:#06191edc}
+.panel{width:min(520px,100%);max-height:95%;overflow:auto;border:1px solid var(--mint);border-radius:18px;background:linear-gradient(145deg,#194247,#0c242b);padding:19px;text-align:center;box-shadow:0 12px 40px #0009}
+h1{font-size:clamp(30px,8vw,44px);margin:0;color:var(--gold);letter-spacing:5px}
+h2{font-size:18px;margin:5px 0 10px}
+p{color:#d0d9c9;line-height:1.55;font-size:13px;margin:8px 0}
+button{cursor:pointer}
+.primary{border:2px solid #e5bd60;border-radius:14px;background:#936622;color:#fff2cf;font-weight:900;font-size:18px;padding:12px 22px;min-height:50px}
+.secondary{border:1px solid var(--mint);border-radius:12px;background:#204c4c;color:#f2e6c9;padding:9px 15px;font-weight:700}
+#orientation{display:none;position:absolute;inset:0;z-index:5;background:#07191e;color:#f2e6c9;align-items:center;justify-content:center;text-align:center;padding:30px}
+@media(orientation:portrait){#orientation{display:flex}#app{visibility:hidden}}
+</style>
+</head>
+<body>
+<div id="app">
+<header><b>神樹鼓 · SHEN SHU GU</b><div id="stats">第一章｜枯樹之下　00:00　連擊 0</div></header>
+<div id="stage">
+<canvas id="game"></canvas>
+<div id="hud">
+ <div class="meter"><span>青銅旗手</span><div class="track"><div class="fill" id="flagFill"></div></div></div>
+ <div class="meter" id="bossHud"><span>枯根山靈</span><div class="track"><div class="fill" id="bossFill"></div></div></div>
+</div>
+<div id="overlay"><div class="panel" id="panel">
+<h1>神樹鼓</h1><h2>第一章・枯樹之下</h2>
+<p>跟著節拍敲擊祭器，帶領古蜀小隊穿過枯林。前排戰士近戰、弓手遠射、神鳥兵從空中支援。</p>
+<p><b>鈴＝前進　　鼓＝攻擊　　哨＝防禦</b><br>每組四拍，依照亮起的提示依序敲擊。節奏準確，隊伍就會執行指令。</p>
+<p>建議橫屏遊玩。這是簡化測試版，約 2 分鐘可完成。</p>
+<button class="primary" id="start">開始出征</button>
+<p><button class="secondary" id="how">玩法說明</button></p>
+</div></div>
+</div>
+<div id="controls">
+<div id="instruction">等待出征指令</div>
+<div id="sequence"><span class="beat">1</span><span class="beat">2</span><span class="beat">3</span><span class="beat">4</span></div>
+<div id="pads">
+<button class="pad" id="bell">🔔 鈴 <small>前進</small></button>
+<button class="pad" id="drum">🥁 鼓 <small>攻擊</small></button>
+<button class="pad" id="whistle">📯 哨 <small>防禦</small></button>
+</div>
+<div id="tools"><button class="tool" id="pause">暫停</button><button class="tool" id="sound">聲音：開</button><button class="tool" id="restart">重來</button></div>
+<div id="feedback">準備跟拍</div>
+</div>
+</div>
+<div id="orientation">請將手機轉為橫屏，開始神樹鼓第一章。</div>
+<script>
+(()=>{
+const $=id=>document.getElementById(id), canvas=$('game'),ctx=canvas.getContext('2d');
+let W=900,H=460,dpr=1,raf=0,started=false,paused=false,ended=false,audio=null,sound=true;
+let startAt=0,elapsed=0,last=0,bar=0,beat=0,combo=0,perfect=0,good=0,miss=0,flag=100,treeGlow=0,move=0,shake=0;
+let enemies=[],boss=null,phase='tutorial',phaseBars=0,activePattern=[],entered=[],beatStart=0,beatLen=.62,expected=[],lastJudge='',actionFlash=0;
+const patterns={
+ move:['鈴','鈴','鈴','鼓'],
+ attack:['鼓','鼓','鈴','鼓'],
+ defend:['哨','哨','鈴','哨'],
+ rally:['鈴','鼓','鈴','鼓']
+};
+const schedule=[
+ {phase:'tutorial',name:'學會前進',bars:4,pattern:'move',hint:'鈴鈴鈴鼓：讓全軍向前推進'},
+ {phase:'wave1',name:'根妖來襲',bars:5,pattern:'attack',hint:'鼓鼓鈴鼓：戰士衝鋒，弓手齊射'},
+ {phase:'wave2',name:'枯枝弩手',bars:5,pattern:'mix',hint:'看敵人位置，前進或攻擊'},
+ {phase:'boss',name:'枯根山靈',bars:12,pattern:'boss',hint:'蜷縮時準備；出手時防禦；露出核心時攻擊'}
+];
+let section=0,sectionBar=0,patternName='move',pattern=[],inputs=[],nextBeatAt=0,sectionMessage='',bossCycle=0,bossState='idle',bossTimer=0;
+function resize(){const r=canvas.getBoundingClientRect();dpr=Math.min(devicePixelRatio||1,2);W=r.width;H=r.height;canvas.width=Math.max(1,Math.floor(W*dpr));canvas.height=Math.max(1,Math.floor(H*dpr));ctx.setTransform(dpr,0,0,dpr,0,0)}
+new ResizeObserver(resize).observe(canvas);resize();
+function tone(freq=440,dur=.09,type='sine',vol=.04){if(!sound)return;try{audio ||= new (window.AudioContext||window.webkitAudioContext)();audio.resume();const o=audio.createOscillator(),g=audio.createGain();o.type=type;o.frequency.value=freq;g.gain.setValueAtTime(vol,audio.currentTime);g.gain.exponentialRampToValueAtTime(.001,audio.currentTime+dur);o.connect(g);g.connect(audio.destination);o.start();o.stop(audio.currentTime+dur)}catch(e){}}
+function say(s,color='#b6d1c0'){$('feedback').textContent=s;$('feedback').style.color=color}
+function setInstruction(){const s=schedule[section];$('instruction').textContent=`${s.name} · ${pattern.map(v=>v).join('　')}`;updateBeats()}
+function updateBeats(){document.querySelectorAll('.beat').forEach((el,i)=>{el.classList.toggle('now',i===beat&&started&&!paused);el.classList.toggle('done',i<inputs.length)})}
+function choosePattern(){
+ const s=schedule[section];
+ if(s.pattern==='mix') pattern=(sectionBar%2===0?patterns.move:patterns.attack).slice();
+ else if(s.pattern==='boss'){
+   const mod=sectionBar%4;
+   pattern=(mod===0||mod===1?patterns.defend:patterns.attack).slice();
+ } else pattern=patterns[s.pattern].slice();
+ inputs=[];beat=0;beatStart=performance.now()/1000;nextBeatAt=beatStart+.48;setInstruction();
+}
+function addEnemy(type='root'){enemies.push({type,x:W*.82+Math.random()*W*.08,hp:type==='archer'?3:2,max:type==='archer'?3:2,attack:0,hit:0})}
+function beginSection(){
+ sectionBar=0;const s=schedule[section];sectionMessage=s.hint;
+ if(section===1){addEnemy('root');addEnemy('root')}
+ if(section===2){addEnemy('archer');addEnemy('root')}
+ if(section===3){boss={hp:100,max:100,x:W*.79,state:'curl',timer:0};$('bossHud').style.display='block';bossState='curl';bossCycle=0;say('枯根山靈現身！注意它的動作。','#f0bd5a')}
+ choosePattern();
+}
+function nextSection(){
+ section++;if(section>=schedule.length){finish(true);return}
+ beginSection();
+}
+function actionResult(){
+ const correct=inputs.filter((v,i)=>v===pattern[i]).length;
+ const grade=correct===4?'PERFECT':correct>=3?'GOOD':'MISS';
+ if(grade==='PERFECT'){perfect++;combo++;say('PERFECT！全軍執行指令','#f2c35d');tone(720,.13,'sine',.07)}
+ else if(grade==='GOOD'){good++;combo++;say('GOOD！隊伍完成指令','#9fd4b5');tone(520,.1,'sine',.05)}
+ else{miss++;combo=0;say('MISS！隊伍沒有跟上節奏','#e18c78');tone(110,.16,'square',.05)}
+ const action=pattern[0];
+ if(grade!=='MISS'){
+   if(action==='鈴'){move=Math.min(1,move+.12);enemies.forEach(e=>e.x-=W*.025);say(grade+' · 全軍前進','#f2c35d');}
+   if(action==='鼓'){
+     actionFlash=.5;
+     if(boss&&section===3){
+       if(boss.state==='weak'){boss.hp=Math.max(0,boss.hp-18);say('命中核心！枯根山靈受重創','#f2c35d')}
+       else{boss.hp=Math.max(0,boss.hp-5);say('攻擊落在硬根上，傷害較低','#b6d1c0')}
+     }else{
+       enemies.forEach(e=>{e.hp-=e.type==='archer'?2:2;e.hit=.25});
+       enemies=enemies.filter(e=>e.hp>0);
+       if(enemies.length===0&&section===1&&sectionBar<3)addEnemy('root');
+       if(enemies.length===0&&section===2&&sectionBar<3)addEnemy('archer');
+     }
+   }
+   if(action==='哨'){if(boss&&section===3){flag=Math.min(100,flag+2);say('防禦成功！旗手穩住陣腳','#9fd4b5')}else{flag=Math.min(100,flag+5);say('隊伍結陣，旗手恢復士氣','#9fd4b5')}}
+ }else{if(boss&&boss.state==='strike')flag=Math.max(0,flag-15)}
+ if(combo>=4){treeGlow=Math.min(1,treeGlow+.25);say('連續指揮成功！神樹微微發亮','#f2c35d')}
+ if(boss&&boss.hp<=0){finish(true);return}
+ sectionBar++;
+ if(section===3&&boss){
+   const mod=sectionBar%4;
+   if(mod===0){boss.state='curl';boss.timer=0;say('Boss 蜷縮預警：準備防禦','#e4b45d')}
+   if(mod===1){boss.state='strike';boss.timer=0;say('Boss 正在揮擊！用哨防禦','#e18c78')}
+   if(mod===2){boss.state='weak';boss.timer=0;say('核心露出！用鼓攻擊','#f2c35d')}
+   if(mod===3){boss.state='recover';boss.timer=0}
+ }
+ if(sectionBar>=schedule[section].bars){nextSection();return}
+ choosePattern();
+}
+function tap(key){
+ if(!started||paused||ended)return;
+ if(inputs.length>=4)return;
+ const now=performance.now()/1000,expectedAt=nextBeatAt+inputs.length*beatLen,delta=Math.abs(now-expectedAt);
+ if(delta>.34){miss++;combo=0;say('太早或太慢，跟上下一拍','#e18c78');tone(130,.08,'square');return}
+ const expected=pattern[inputs.length];
+ inputs.push(key);beat=inputs.length;updateBeats();
+ if(key!==expected){say('祭器不正確，留意提示','#e18c78');tone(140,.08,'square')}
+ else if(delta<.16){tone(key==='鈴'?640:key==='鼓'?190:350,.08,key==='鼓'?'triangle':'sine',.045)}
+ else{tone(key==='鈴'?500:key==='鼓'?160:300,.07,'sine',.035)}
+ if(inputs.length===4){setTimeout(()=>{if(!paused&&!ended&&inputs.length===4)actionResult()},130)}
+}
+$('bell').addEventListener('pointerdown',e=>{e.preventDefault();tap('鈴')});
+$('drum').addEventListener('pointerdown',e=>{e.preventDefault();tap('鼓')});
+$('whistle').addEventListener('pointerdown',e=>{e.preventDefault();tap('哨')});
+function start(){startedAt=performance.now();audio ||= new (window.AudioContext||window.webkitAudioContext)();audio.resume();started=true;paused=false;ended=false;section=0;combo=perfect=good=miss=0;flag=100;treeGlow=0;move=0;enemies=[];boss=null;sectionBar=0;$('overlay').style.display='none';$('pause').textContent='暫停';beginSection();last=performance.now();raf=requestAnimationFrame(loop)}
+$('start').onclick=start;
+$('how').onclick=()=>{$('panel').innerHTML='<h2>四拍指令</h2><p>每一組有四拍。照著圓點亮起的順序，按下對應祭器。四拍全對是 PERFECT，三拍正確是 GOOD。</p><p>鈴：前進並推進戰線。鼓：戰士近戰、弓手射擊。哨：抵擋敵人攻擊，保護旗手。</p><p>Boss 戰中，蜷縮代表預警、揮擊時用哨防禦、核心亮起時用鼓攻擊。</p><button class="primary" id="back">明白，開始出征</button>';$('back').onclick=start};
+$('pause').onclick=()=>{if(!started||ended)return;paused=!paused;$('pause').textContent=paused?'繼續':'暫停';if(!paused){last=performance.now();raf=requestAnimationFrame(loop)}else say('已暫停')};
+$('sound').onclick=()=>{sound=!sound;$('sound').textContent='聲音：'+(sound?'開':'關');if(sound)tone(520,.1)};
+$('restart').onclick=()=>{if(confirm('重新開始第一章？'))start()};
+function finish(win){ended=true;started=false;cancelAnimationFrame(raf);$('overlay').style.display='flex';$('bossHud').style.display='none';$('panel').innerHTML=win?`<h1>第一章完成</h1><h2>枯樹之下</h2><p>枯根山靈被擊退，神樹重新亮起微光。</p><p>PERFECT：${perfect}　GOOD：${good}<br>MISS：${miss}<br>最高連擊：${combo}</p><button class="primary" id="again">再出征一次</button>`:`<h1>旗手倒下</h1><h2>出征失敗</h2><p>青銅旗手倒下了。重新整隊，再挑戰枯樹之下。</p><button class="primary" id="again">重新出征</button>`;$('again').onclick=start}
+function loop(now){
+ if(!started||paused||ended)return;
+ const sec=(now-last)/1000;last=now;elapsed=(now-startedAt)/1000;
+ // Beat clock: four beats in a bar. Input window follows the visible pulse.
+ const beatElapsed=(now/1000-nextBeatAt);
+ const pulseIndex=Math.floor((now/1000-nextBeatAt)/beatLen);
+ if(inputs.length<4&&now/1000>nextBeatAt+inputs.length*beatLen+.39){inputs.push('');miss++;combo=0;beat=inputs.length;updateBeats();if(inputs.length===4)setTimeout(()=>{if(!paused&&!ended&&inputs.length===4)actionResult()},120)}
+ if(boss){boss.timer+=sec;if(boss.state==='strike'&&boss.timer>2.8){flag=Math.max(0,flag-.18);}}
+ enemies.forEach(e=>{e.x-=sec*(e.type==='archer'?2:5);e.attack+=sec;if(e.x<W*.63&&e.attack>3){flag=Math.max(0,flag-(e.type==='archer'?.25:.35));e.attack=0}});
+ if(flag<=0){finish(false);return}
+ if(section===3&&boss&&boss.state==='strike'&&boss.timer>4.2){boss.state='weak';boss.timer=0;say('核心露出！用鼓攻擊','#f2c35d')}
+ draw(now/1000);$('flagFill').style.width=flag+'%';if(boss)$('bossFill').style.width=(boss.hp/boss.max*100)+'%';
+ $('stats').textContent=`第一章｜${schedule[section]?.name||''}　${String(Math.floor(elapsed/60)).padStart(2,'0')}:${String(Math.floor(elapsed%60)).padStart(2,'0')}　連擊 ${combo}`;
+ raf=requestAnimationFrame(loop)
+}
+let startedAt=0;
+const originalStart=start;
+function draw(t){
+ ctx.clearRect(0,0,W,H);
+ const sky=ctx.createLinearGradient(0,0,0,H);sky.addColorStop(0,'#123b43');sky.addColorStop(.65,'#22574f');sky.addColorStop(1,'#0a2025');ctx.fillStyle=sky;ctx.fillRect(0,0,W,H);
+ // moon and distant ridge
+ ctx.fillStyle='#d9a441';ctx.globalAlpha=.68;ctx.beginPath();ctx.arc(W*.78,H*.2,Math.min(W,H)*.105,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;
+ ctx.fillStyle='#19433e';ctx.beginPath();ctx.moveTo(0,H*.63);for(let i=0;i<=W;i+=24)ctx.lineTo(i,H*.57+Math.sin(i*.013)*H*.035);ctx.lineTo(W,H);ctx.lineTo(0,H);ctx.fill();
+ // sacred tree
+ ctx.strokeStyle=treeGlow>.2?'#d9a441':'#0b292b';ctx.lineWidth=Math.max(8,W*.016);ctx.lineCap='round';ctx.beginPath();ctx.moveTo(W*.52,H*.75);ctx.lineTo(W*.52,H*.23);ctx.lineTo(W*.4,H*.13);ctx.moveTo(W*.52,H*.38);ctx.lineTo(W*.65,H*.17);ctx.moveTo(W*.52,H*.49);ctx.lineTo(W*.35,H*.32);ctx.stroke();
+ for(let i=0;i<7;i++){const xx=W*(.06+i*.13);ctx.fillStyle='#d9a441';ctx.beginPath();ctx.ellipse(xx,H*.48,5,3,0,0,Math.PI*2);ctx.fill()}
+ // squad positions
+ const squadX=W*(.18+move*.16),ground=H*.77;
+ for(let i=0;i<3;i++)drawWarrior(squadX+i*W*.045,ground, i===0, t);
+ drawArcher(squadX-W*.05,ground-2,t);
+ drawBird(squadX+W*.12,ground-W*.17,t);
+ // enemies
+ enemies.forEach(e=>{if(e.type==='archer')drawArcherEnemy(e.x,ground-2,t);else drawRoot(e.x,ground,t);if(e.hit>0)e.hit=Math.max(0,e.hit-.02)});
+ if(boss)drawBoss(boss.x,ground,t,boss.state);
+ // action flash / combo halo
+ if(combo>=4){ctx.strokeStyle='#e5bc56';ctx.lineWidth=3;ctx.globalAlpha=.4+Math.sin(t*4)*.2;ctx.beginPath();ctx.arc(squadX+W*.06,ground-H*.11,Math.min(W,H)*.16,0,Math.PI*2);ctx.stroke();ctx.globalAlpha=1}
+}
+function drawWarrior(x,y,standard,t){ctx.save();ctx.translate(x,y+Math.sin(t*5+x)*2);ctx.strokeStyle='#061b1e';ctx.lineWidth=5;ctx.lineCap='round';ctx.fillStyle='#3f7f6b';ctx.beginPath();ctx.moveTo(-15,-59);ctx.lineTo(15,-59);ctx.lineTo(19,-27);ctx.lineTo(10,-17);ctx.lineTo(-10,-17);ctx.lineTo(-19,-27);ctx.closePath();ctx.fill();ctx.stroke();ctx.fillStyle='#d9a441';ctx.fillRect(-9,-46,18,4);ctx.strokeStyle='#6aa99a';ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(-10,-56);ctx.lineTo(-18,-70);ctx.moveTo(10,-56);ctx.lineTo(18,-70);ctx.stroke();ctx.strokeStyle='#061b1e';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(0,-17);ctx.lineTo(0,-3);ctx.lineTo(-10,12);ctx.moveTo(0,-3);ctx.lineTo(10,12);ctx.moveTo(-8,-43);ctx.lineTo(-19,-29);ctx.moveTo(8,-43);ctx.lineTo(19,-29);ctx.stroke();if(standard){ctx.strokeStyle='#d9a441';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(22,-5);ctx.lineTo(22,-96);ctx.stroke();ctx.fillStyle='#d9a441';ctx.beginPath();ctx.moveTo(22,-96);ctx.lineTo(45,-87);ctx.lineTo(22,-78);ctx.fill()}ctx.restore()}
+function drawArcher(x,y,t){ctx.save();ctx.translate(x,y+Math.sin(t*4)*2);ctx.strokeStyle='#0a2226';ctx.lineWidth=5;ctx.fillStyle='#6aa99a';ctx.beginPath();ctx.moveTo(-13,-52);ctx.lineTo(13,-52);ctx.lineTo(16,-23);ctx.lineTo(-16,-23);ctx.closePath();ctx.fill();ctx.stroke();ctx.strokeStyle='#d9a441';ctx.lineWidth=3;ctx.beginPath();ctx.arc(18,-45,18,-1.2,1.2);ctx.stroke();ctx.strokeStyle='#0a2226';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(0,-23);ctx.lineTo(-8,12);ctx.moveTo(0,-23);ctx.lineTo(8,12);ctx.stroke();ctx.restore()}
+function drawBird(x,y,t){ctx.save();ctx.translate(x,y+Math.sin(t*5)*5);ctx.fillStyle='#d9a441';ctx.strokeStyle='#0a2226';ctx.lineWidth=4;ctx.beginPath();ctx.ellipse(0,-38,17,12,0,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.strokeStyle='#6aa99a';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(-8,-39);ctx.lineTo(-27,-58+Math.sin(t*7)*5);ctx.moveTo(8,-39);ctx.lineTo(27,-58-Math.sin(t*7)*5);ctx.stroke();ctx.fillStyle='#0a2226';ctx.beginPath();ctx.arc(4,-42,2.5,0,7);ctx.fill();ctx.restore()}
+function drawRoot(x,y,t){ctx.save();ctx.translate(x,y);ctx.strokeStyle='#8c3b2a';ctx.lineWidth=8;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(0,-26);ctx.lineTo(-8,-48);ctx.lineTo(-25,-58);ctx.moveTo(-8,-48);ctx.lineTo(17,-61);ctx.moveTo(0,-26);ctx.lineTo(0,0);ctx.lineTo(-13,13);ctx.moveTo(0,0);ctx.lineTo(14,13);ctx.stroke();ctx.fillStyle='#d9a441';ctx.beginPath();ctx.ellipse(-3,-39,5,3,0,0,7);ctx.ellipse(9,-39,5,3,0,0,7);ctx.fill();ctx.restore()}
+function drawArcherEnemy(x,y,t){drawRoot(x,y,t);ctx.save();ctx.strokeStyle='#9a5b39';ctx.lineWidth=3;ctx.beginPath();ctx.arc(x+13,y-53,15,-1.2,1.2);ctx.stroke();ctx.restore()}
+function drawBoss(x,y,t,state){ctx.save();ctx.translate(x,y);ctx.strokeStyle='#091d20';ctx.lineWidth=12;ctx.fillStyle='#55452f';ctx.beginPath();ctx.moveTo(-65,-5);ctx.lineTo(-58,-65);ctx.lineTo(-20,-48);ctx.lineTo(0,-104);ctx.lineTo(24,-48);ctx.lineTo(62,-68);ctx.lineTo(72,-5);ctx.closePath();ctx.fill();ctx.stroke();ctx.strokeStyle='#8c3b2a';ctx.lineWidth=13;ctx.beginPath();ctx.moveTo(-40,-12);ctx.lineTo(-70,-92);ctx.moveTo(42,-12);ctx.lineTo(76,-100);ctx.moveTo(0,-48);ctx.lineTo(0,-133);ctx.stroke();ctx.fillStyle=state==='weak'?'#f5c85c':'#3f7f6b';ctx.beginPath();ctx.arc(0,-53,15+Math.sin(t*8)*2,0,7);ctx.fill();ctx.strokeStyle='#e0b65b';ctx.lineWidth=3;ctx.beginPath();ctx.arc(0,-53,23,0,7);ctx.stroke();ctx.restore()}
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&started&&!paused){paused=true;$('pause').textContent='繼續';say('切換頁面，遊戲已暫停')}});
+
+})();
+</script>
+</body></html>
